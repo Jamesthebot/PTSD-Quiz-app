@@ -132,7 +132,7 @@ val allQuizQuestions = listOf(
 
 data class QuizUiState(
     val currentQuestionIndex: Int = 0,
-    val currentQuestion: QuizQuestion? = null, // allQuizQuestions.getOrNull(0)
+    val currentQuestion: QuizQuestion? = null, 
     val answers: Map<Int, Int> = emptyMap(),
     val isQuizFinished: Boolean = false,
     val isLoading: Boolean = true
@@ -143,8 +143,8 @@ val Context.userProgressDataStore: DataStore<Preferences> by preferencesDataStor
 object UserProgressKeys {
     val QUIZ_ANSWERS_MAP = stringPreferencesKey("quiz_answers_map")
     val CURRENT_QUESTION_INDEX =
-        stringPreferencesKey("current_question_index") // Storing as String for simplicity here
-    val QUIZ_COMPLETION_COUNT = intPreferencesKey("quiz_completion_count") // NEW
+        stringPreferencesKey("current_question_index") 
+    val QUIZ_COMPLETION_COUNT = intPreferencesKey("quiz_completion_count")
 }
 
 class UserProgressRepository(private val context: Context) {
@@ -198,15 +198,14 @@ class UserProgressRepository(private val context: Context) {
         context.userProgressDataStore.edit {
             it.remove(UserProgressKeys.QUIZ_ANSWERS_MAP)
             it.remove(UserProgressKeys.CURRENT_QUESTION_INDEX)
-            // It does NOT clear QUIZ_COMPLETION_COUNT, which is fine.
         }
-        Log.d("UserProgressRepo", "clearUserProgress: Cleared answers map and current question index.") // Add this log
+        Log.d("UserProgressRepo", "clearUserProgress: Cleared answers map and current question index.") 
     }
 }
 
 
 class QuizViewModel(private val userProgressRepository: UserProgressRepository) : ViewModel() {
-    private val _uiState = MutableStateFlow(QuizUiState()) //isLoading = true by default
+    private val _uiState = MutableStateFlow(QuizUiState())
     val uiState: StateFlow<QuizUiState> = _uiState.asStateFlow()
 
     init {
@@ -231,15 +230,12 @@ class QuizViewModel(private val userProgressRepository: UserProgressRepository) 
                 _uiState.update {
                     it.copy(
                         currentQuestion = null,
-                        isQuizFinished = true, // Consider this an error or empty state
+                        isQuizFinished = true, 
                         isLoading = false
                     )
                 }
                 return@launch
             }
-
-            // Key condition: Quiz is considered completed if savedIndex indicates it's past the last question.
-            // We save allQuizQuestions.size as the index when the quiz is actually finished.
             val wasPreviouslyCompleted = savedIndex == allQuizQuestions.size && allQuizQuestions.isNotEmpty()
 
             Log.d("QuizViewModel", "loadInitialProgress: wasQuizCompleted = $wasPreviouslyCompleted (based on savedIndex: $savedIndex >= allQuizQuestions.size: ${allQuizQuestions.size})")
@@ -262,7 +258,7 @@ class QuizViewModel(private val userProgressRepository: UserProgressRepository) 
                         currentQuestionIndex = savedIndex,
                         currentQuestion = allQuizQuestions.getOrNull(savedIndex),
                         answers = savedAnswers,
-                        isQuizFinished = false, // Explicitly false
+                        isQuizFinished = false,
                         isLoading = false
                     )
                 }
@@ -278,7 +274,6 @@ class QuizViewModel(private val userProgressRepository: UserProgressRepository) 
             currentState.copy(answers = updatedAnswers)
         }
         viewModelScope.launch {
-            // Save all answers together after updating the local map
             userProgressRepository.saveAnswers(updatedAnswers)
             Log.d("QuizViewModel", "answerQuestion: Saved answer for QID $questionId. All answers: $updatedAnswers")
         }
@@ -302,20 +297,18 @@ class QuizViewModel(private val userProgressRepository: UserProgressRepository) 
                 Log.d("QuizViewModel", "nextQuestion: Saved next question index: $nextIndex")
             }
         } else {
-            // This is the "Finish" case (currently on the last question, about to finish)
             Log.d("QuizViewModel", "nextQuestion: Finishing quiz. Current Index: $currentIndex")
             val finalAnswers = _uiState.value.answers
             val finalTotalScore = finalAnswers.values.sum()
 
             viewModelScope.launch {
-                // Answers should already be saved by answerQuestion
                 userProgressRepository.saveAnswers(finalAnswers)
                 userProgressRepository.saveCurrentQuestionIndex(allQuizQuestions.size)
                 userProgressRepository.addQuizCompletionEntry(userName, finalTotalScore)
                 _uiState.update {
                     it.copy(
                         isQuizFinished = true,
-                        currentQuestionIndex = allQuizQuestions.size, // Explicitly set finished index
+                        currentQuestionIndex = allQuizQuestions.size, 
                         currentQuestion = null,
                         isLoading = false
                     )
@@ -335,7 +328,6 @@ class QuizViewModel(private val userProgressRepository: UserProgressRepository) 
                 it.copy(
                     currentQuestionIndex = prevIndex,
                     currentQuestion = allQuizQuestions.getOrNull(prevIndex)
-                    // isQuizFinished should remain false here
                 )
             }
         }
@@ -344,19 +336,18 @@ class QuizViewModel(private val userProgressRepository: UserProgressRepository) 
         }
     }
 
-    // This is for a full reset of the current user's quiz attempt
     fun restartQuizForCurrentUser() {
         Log.d("QuizViewModel", "restartQuizForCurrentUser: Restarting quiz.")
         viewModelScope.launch {
-            userProgressRepository.clearUserProgress() // Clears answers map and current_question_index
-            _uiState.value = QuizUiState( // Reset to initial state
+            userProgressRepository.clearUserProgress()
+            _uiState.value = QuizUiState(
                 currentQuestionIndex = 0,
                 currentQuestion = allQuizQuestions.getOrNull(0),
                 answers = emptyMap(),
                 isQuizFinished = false,
-                isLoading = false // Done loading after reset
+                isLoading = false 
             )
-            userProgressRepository.saveCurrentQuestionIndex(0) // Save the reset index
+            userProgressRepository.saveCurrentQuestionIndex(0)
             Log.d("QuizViewModel", "restartQuizForCurrentUser: Quiz progress cleared and state reset. New index 0 saved.")
         }
     }
@@ -380,7 +371,7 @@ object NavDestinations {
     fun quizRoute(userName: String) = "quiz/$userName"
     const val QUIZ_RESULTS_ROUTE_TEMPLATE = "quiz_results/{userName}"
     fun quizResultsRoute(userName: String) = "quiz_results/$userName"
-    const val COMPLETION_LOG_ROUTE = "completion_log" // NEW
+    const val COMPLETION_LOG_ROUTE = "completion_log" 
 }
 
 @Composable
@@ -398,20 +389,18 @@ fun MyApp() {
         }
 
         composable(
-            route = "quiz/{userName}", // Changed route to be more descriptive
+            route = "quiz/{userName}",
             arguments = listOf(navArgument("userName") { type = NavType.StringType })
         ) { backStackEntry ->
             val userNameArgument = backStackEntry.arguments?.getString("userName")
             QuestionScreen(
                 navController = navController,
                 userName = userNameArgument ?: "User"
-                // quizViewModel can be implicitly created by viewModel() in QuestionScreen
-                // or passed if instanced in MyApp: quizViewModel = quizViewModel
             )
         }
 
         composable(
-            route = "quiz_results/{userName}", // Make sure userName is available if needed
+            route = "quiz_results/{userName}",
             arguments = listOf(navArgument("userName") { type = NavType.StringType })
         ) { backStackEntry ->
             val userNameArgument = backStackEntry.arguments?.getString("userName")
@@ -459,9 +448,7 @@ fun HomeScreen(navController: NavController) {
 
 @Composable
 fun SecondScreen(navController: NavController, name: String) {
-    // These lines are NEW or need to be present at the top of SecondScreen
     val context = LocalContext.current
-    // Get the Application context for the repository
     val application = context.applicationContext as Application
     val userProgressRepository = remember { UserProgressRepository(application) }
     val coroutineScope = rememberCoroutineScope()
@@ -504,23 +491,20 @@ fun SecondScreen(navController: NavController, name: String) {
         }
 
 
-        // This Text seems like it might be what you intended to position near the buttons
         Text(
             text = "There will be 20 total questions, and your day-to day progress will be saved. \n0 = Strongly Disagree\n4 = Strongly Agree",
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 200.dp), // Example adjustment
+                .padding(bottom = 200.dp), 
             fontSize = 24.sp,
         )
 
         Button(
             onClick = {
-                // The new logic goes inside this onClick lambda
                 Log.d("SecondScreen", "Start Quiz button clicked for $name. Clearing progress for new session.")
                 coroutineScope.launch {
                     userProgressRepository.clearUserProgress()
                     userProgressRepository.saveCurrentQuestionIndex(0)
-                    // QUIZ_COMPLETION_COUNT is NOT cleared, which is fine.
                     Log.d("SecondScreen", "Progress cleared. Navigating to quiz screen for $name.")
                     navController.navigate("quiz/$name")
                 }
@@ -536,7 +520,7 @@ fun SecondScreen(navController: NavController, name: String) {
             onClick = { navController.popBackStack() },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .offset(y = (-40).dp) // Example adjustment
+                .offset(y = (-40).dp)
         ) {
             Text("Back to Home")
         }
@@ -550,12 +534,12 @@ fun QuestionScreen(navController: NavController, userName: String) {
     val application = LocalContext.current.applicationContext as Application
     val userProgressRepository = remember { UserProgressRepository(application) }
     val quizViewModel: QuizViewModel = viewModel(
-        key = "quiz_vm_$userName", // Optional: Key if you want different VM instances for different users, though usually not needed if data is user-specific.
+        key = "quiz_vm_$userName", 
         factory = QuizViewModel.QuizViewModelFactory(userProgressRepository, application)
     )
     val uiState by quizViewModel.uiState.collectAsState()
     val currentQuestion = uiState.currentQuestion
-    var selectedRating by remember(currentQuestion?.id, uiState.answers) { // Re-init if question or answers change
+    var selectedRating by remember(currentQuestion?.id, uiState.answers) {
         mutableStateOf(currentQuestion?.let { uiState.answers[it.id] })
     }
     val context = LocalContext.current
@@ -563,18 +547,14 @@ fun QuestionScreen(navController: NavController, userName: String) {
     Log.d("QuestionScreen", "Composing. isLoading: ${uiState.isLoading}, isQuizFinished: ${uiState.isQuizFinished}, CurrentQIndex: ${uiState.currentQuestionIndex}, CurrentQ: ${currentQuestion?.id}")
 
 
-    // This LaunchedEffect handles navigation when the quiz becomes finished
     LaunchedEffect(uiState.isQuizFinished) {
         if (uiState.isQuizFinished) {
-            // Check again to avoid race conditions if the state changes rapidly
-            // and ensure we are not already on the results screen or trying to navigate multiple times.
-            // A common pattern is to check if the current route is still the quiz screen.
             if (navController.currentDestination?.route?.startsWith("quiz/") == true) {
                 Log.d("QuestionScreen", "LaunchedEffect: Quiz is finished, navigating to results for $userName.")
                 Toast.makeText(context, "Quiz Finished! Navigating to results.", Toast.LENGTH_LONG).show()
                 navController.navigate("quiz_results/$userName") {
                     popUpTo("quiz/$userName") { inclusive = true }
-                    launchSingleTop = true // Avoid multiple copies of results screen
+                    launchSingleTop = true 
                 }
             }
         }
@@ -589,19 +569,13 @@ fun QuestionScreen(navController: NavController, userName: String) {
         return
     }
 
-    // If quiz is finished, but navigation hasn't happened yet (e.g. effect is running),
-    // show a placeholder. The return above handles the main case for isLoading.
-    // The LaunchedEffect should handle the navigation.
-    // However, if isQuizFinished is true AND isLoading is false, it means loadInitialProgress
-    // determined it's finished. The LaunchedEffect should pick this up.
-    // To prevent rendering the question UI if already finished:
     if (uiState.isQuizFinished && !uiState.isLoading) {
         Log.d("QuestionScreen", "Displaying: Quiz Finished! Preparing results...")
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("Quiz Finished! Preparing results...")
             CircularProgressIndicator()
         }
-        return // Important to prevent rest of QuestionScreen from rendering if already finished
+        return 
     }
 
 
@@ -614,21 +588,15 @@ fun QuestionScreen(navController: NavController, userName: String) {
         }
     }
 
-    // This condition should ideally not be met if isQuizFinished is handled correctly above,
-    // and isLoading is false. But as a safeguard:
     if (currentQuestion == null && !uiState.isLoading && !uiState.isQuizFinished) {
         Log.d("QuestionScreen", "Displaying: CurrentQuestion is null, but not loading and not finished. This might be an issue.")
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("Error: Could not load question.")
-            // Optionally, add a button to retry or go back
         }
         return
     }
-    // If currentQuestion is null because the quiz *is* finished, the above block (if uiState.isQuizFinished) handles it.
-    // So, if we reach here, currentQuestion should ideally not be null.
     if (currentQuestion == null) {
-        // This case should primarily be covered by isLoading or isQuizFinished.
-        // If it's reached otherwise, it implies an unexpected state.
+
         Log.d("QuestionScreen", "Displaying: currentQuestion is null unexpectedly. Loading fallback.")
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("Loading question (fallback)...")
@@ -663,7 +631,7 @@ fun QuestionScreen(navController: NavController, userName: String) {
             Card (modifier = Modifier.fillMaxWidth()) {
                 Column (modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = currentQuestion.questionText, // Safe now due to null check above
+                        text = currentQuestion.questionText,
                         fontSize = 18.sp,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
@@ -715,8 +683,7 @@ fun QuestionScreen(navController: NavController, userName: String) {
 //                            val scoreForThisCompletion = currentAnswers.values.sum()
 
                             quizViewModel.answerQuestion(currentQuestion.id, selectedRating!!)
-                            quizViewModel.nextQuestion(userName) // This will handle finish logic
-                            // selectedRating = null // Reset for next question if desired, or handle in remember key
+                            quizViewModel.nextQuestion(userName)
                         }
                         else {
                             Toast.makeText(context, "Please select a rating", Toast.LENGTH_SHORT).show()
@@ -750,7 +717,6 @@ fun QuizResultsScreen(navController: NavController, userName: String) {
     var totalScore by remember { mutableStateOf(0) }
     var isLoadingScore by remember { mutableStateOf(true) }
 
-    // When answers are loaded -> calculate score
     LaunchedEffect(savedAnswerMap) {
         savedAnswerMap?.let { answers ->
             totalScore = answers.values.sum()
